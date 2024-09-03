@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:face_auth_flutter/page/face_recognition/image_converter.dart';
+import 'package:face_auth_flutter/face_auth/face_recognition/image_converter.dart';
 import 'package:flutter/material.dart';
 
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -48,8 +48,10 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
     cameras = await availableCameras();
 
     _cameraController = CameraController(
-        cameras![widget.cameraType == CameraType.front ? 1 : 0],
-        ResolutionPreset.high);
+      cameras![widget.cameraType == CameraType.front ? 1 : 0],
+      ResolutionPreset.veryHigh,
+      enableAudio: false,
+    );
 
     await _cameraController.initialize();
 
@@ -125,7 +127,7 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
     if (facesDetected.isNotEmpty) {
       //
 
-      dp("Detcted faces", facesDetected.length);
+      dp("Detected faces", facesDetected.length);
 
       await stopCamera();
 
@@ -135,7 +137,6 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
 
       // final Uint8List imageBytesC =
       //     Uint8List.fromList(img.encodePng(imageBytes!));
-
       // await showDialog(
       //   builder: (context) {
       //     return Column(

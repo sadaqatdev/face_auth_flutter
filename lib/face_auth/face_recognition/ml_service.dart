@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:face_auth_flutter/page/face_recognition/camera_page.dart';
+import 'package:face_auth_flutter/face_auth/face_recognition/camera_page.dart';
 import 'package:face_auth_flutter/utils/local_db.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';

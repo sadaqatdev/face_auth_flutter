@@ -1,4 +1,4 @@
-import 'package:face_auth_flutter/page/login_page.dart';
+import 'package:face_auth_flutter/face_auth/menu_page.dart';
 import 'package:face_auth_flutter/utils/local_db.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
