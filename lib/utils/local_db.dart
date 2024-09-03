@@ -10,7 +10,7 @@ class HiveBoxes {
     await Hive.openBox(userDetails);
   }
 
-  static clearAllBox() async {
+  static Future<void> clearAllBox() async {
     await HiveBoxes.userDetailsBox().clear();
   }
 }

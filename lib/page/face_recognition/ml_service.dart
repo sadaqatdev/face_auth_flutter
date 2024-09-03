@@ -2,8 +2,11 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:face_auth_flutter/page/face_recognition/camera_page.dart';
 import 'package:face_auth_flutter/utils/local_db.dart';
-import 'package:google_ml_kit/google_ml_kit.dart';
+import 'package:flutter/material.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+// import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as imglib;
 import '../../../models/user.dart';
@@ -11,37 +14,50 @@ import '../../utils/utils.dart';
 import 'image_converter.dart';
 
 class MLService {
-  late Interpreter interpreter;
-  List? predictedArray;
+  Interpreter? interpreter;
+  Delegate? delegate;
 
-  Future<User?> predict(
-      CameraImage cameraImage, Face face, bool loginUser, String name) async {
-    List input = _preProcess(cameraImage, face);
+  void disposeResources() {
+    //
+
+    interpreter?.close();
+    delegate?.delete();
+
+    dp("Dispose resources", "interpreter");
+  }
+
+  Future<double?> predict(CameraImage cameraImage, Face face, ScanType scanType,
+      context, bool isBack) async {
+    //
+
+    List input = await _preProcess(cameraImage, face, context, isBack);
+
     input = input.reshape([1, 112, 112, 3]);
 
     List output = List.generate(1, (index) => List.filled(192, 0));
 
-    await initializeInterpreter();
+    await initializeInterpreter(context);
 
-    interpreter.run(input, output);
+    interpreter!.run(input, output);
+
     output = output.reshape([192]);
 
-    predictedArray = List.from(output);
+    List? predictedArray = List.from(output);
 
-    if (!loginUser) {
-      LocalDB.setUserDetails(User(name: name, array: predictedArray!));
+    if (scanType == ScanType.register) {
+      await HiveBoxes.clearAllBox();
+      LocalDB.setUserDetails(User(name: "name", array: predictedArray));
       return null;
     } else {
       User? user = LocalDB.getUser();
+
       List userArray = user.array!;
-      int minDist = 999;
-      double threshold = 1.5;
-      var dist = euclideanDistance(predictedArray!, userArray);
-      if (dist <= threshold && dist < minDist) {
-        return user;
-      } else {
-        return null;
-      }
+
+      var dist = euclideanDistance(predictedArray, userArray);
+
+      dp("Match s", dist);
+
+      return dist;
     }
   }
 
@@ -54,56 +70,134 @@ class MLService {
     return pow(sum, 0.5);
   }
 
-  initializeInterpreter() async {
-    Delegate? delegate;
+  initializeInterpreter(context) async {
     try {
       if (Platform.isAndroid) {
         delegate = GpuDelegateV2(
             options: GpuDelegateOptionsV2(
           isPrecisionLossAllowed: false,
-          inferencePreference: TfLiteGpuInferenceUsage.fastSingleAnswer,
-          inferencePriority1: TfLiteGpuInferencePriority.minLatency,
-          inferencePriority2: TfLiteGpuInferencePriority.auto,
-          inferencePriority3: TfLiteGpuInferencePriority.auto,
+          // inferencePreference: TfLiteGpuInferenceUsage.fastSingleAnswer,
+          // inferencePriority1: TfLiteGpuInferencePriority
+          //     .TFLITE_GPU_INFERENCE_PRIORITY_MAX_PRECISION,
+          // inferencePriority2: TfLiteGpuInferencePriority.auto,
+          // inferencePriority3: TfLiteGpuInferencePriority.auto,
         ));
       } else if (Platform.isIOS) {
         delegate = GpuDelegate(
           options: GpuDelegateOptions(
               allowPrecisionLoss: true,
-              waitType: TFLGpuDelegateWaitType.active),
+              // waitType: TFLGpuDelegateWaitType.active,
+              waitType: 1),
         );
       }
       var interpreterOptions = InterpreterOptions()..addDelegate(delegate!);
 
-      interpreter = await Interpreter.fromAsset('mobilefacenet.tflite',
+      interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite',
           options: interpreterOptions);
-    } catch (e) {
-      printIfDebug('Failed to load model.');
-      printIfDebug(e);
+    } catch (e, s) {
+      dp('Failed to load model $e', s);
     }
   }
 
-  List _preProcess(CameraImage image, Face faceDetected) {
-    imglib.Image croppedImage = _cropFace(image, faceDetected);
-    imglib.Image img = imglib.copyResizeCropSquare(croppedImage, 112);
+  Future<List> _preProcess(
+      CameraImage image, Face faceDetected, context, bool isBack) async {
+    imglib.Image croppedImage =
+        await _cropFace(image, faceDetected, context, isBack);
+
+    imglib.Image img = imglib.copyResizeCropSquare(croppedImage, size: 112);
+
+    // final Uint8List imageBytes = Uint8List.fromList(imglib.encodePng(img));
+
+    // await showDialog(
+    //   builder: (context) {
+    //     return Column(
+    //       mainAxisAlignment: MainAxisAlignment.center,
+    //       children: [
+    //         const Text("First image UI"),
+    //         Center(
+    //           child: Image.memory(
+    //             imageBytes,
+    //             height: 100,
+    //           ),
+    //         ),
+    //         Material(
+    //           child: MaterialButton(
+    //             onPressed: () {
+    //               Navigator.pop(context);
+    //             },
+    //             child: Text("OK"),
+    //           ),
+    //         )
+    //       ],
+    //     );
+    //   },
+    //   context: context,
+    // );
 
     Float32List imageAsList = _imageToByteListFloat32(img);
+
     return imageAsList;
   }
 
-  imglib.Image _cropFace(CameraImage image, Face faceDetected) {
-    imglib.Image convertedImage = _convertCameraImage(image);
-    double x = faceDetected.boundingBox.left - 10.0;
-    double y = faceDetected.boundingBox.top - 10.0;
-    double w = faceDetected.boundingBox.width + 10.0;
-    double h = faceDetected.boundingBox.height + 10.0;
-    return imglib.copyCrop(
-        convertedImage, x.round(), y.round(), w.round(), h.round());
+  Uint8List float32ListToUint8List(Float32List float32List) {
+    // Create a Uint8List with the same length as Float32List
+    final Uint8List uint8List = Uint8List(float32List.length);
+
+    // Iterate through the Float32List and convert each value to Uint8
+    for (int i = 0; i < float32List.length; i++) {
+      // Convert the float value to the range 0-255
+      int value = (float32List[i] * 255).clamp(0, 255).toInt();
+      uint8List[i] = value;
+    }
+
+    return uint8List;
   }
 
-  imglib.Image _convertCameraImage(CameraImage image) {
+  Future<imglib.Image> _cropFace(
+      CameraImage image, Face faceDetected, context, bool isBack) async {
+    imglib.Image convertedImage = _convertCameraImage(image, isBack);
+
+    // final Uint8List imageBytes =
+    //     Uint8List.fromList(imglib.encodePng(convertedImage));
+
+    // await showDialog(
+    //   builder: (context) {
+    //     return Column(
+    //       mainAxisAlignment: MainAxisAlignment.center,
+    //       children: [
+    //         const Text("First image UI"),
+    //         Center(
+    //           child: Image.memory(imageBytes, height: 300),
+    //         ),
+    //         Material(
+    //           child: MaterialButton(
+    //             onPressed: () {
+    //               Navigator.pop(context);
+    //             },
+    //             child: Text("OK"),
+    //           ),
+    //         )
+    //       ],
+    //     );
+    //   },
+    //   context: context,
+    // );
+
+    double x = faceDetected.boundingBox.left + 3;
+    double y = faceDetected.boundingBox.top;
+
+    double w = faceDetected.boundingBox.width;
+    double h = faceDetected.boundingBox.height + 10.0;
+
+    return imglib.copyCrop(convertedImage,
+        x: x.round(), y: y.round(), width: w.round(), height: h.round());
+  }
+
+  imglib.Image _convertCameraImage(CameraImage image, bool isBack) {
     var img = convertToImage(image);
-    var img1 = imglib.copyRotate(img!, -90);
+
+    var img1 = imglib.copyRotate(img!, angle: isBack ? 90 : -90);
+
     return img1;
   }
 
@@ -115,9 +209,10 @@ class MLService {
     for (var i = 0; i < 112; i++) {
       for (var j = 0; j < 112; j++) {
         var pixel = image.getPixel(j, i);
-        buffer[pixelIndex++] = (imglib.getRed(pixel) - 128) / 128;
-        buffer[pixelIndex++] = (imglib.getGreen(pixel) - 128) / 128;
-        buffer[pixelIndex++] = (imglib.getBlue(pixel) - 128) / 128;
+
+        buffer[pixelIndex++] = (pixel.r - 128) / 128;
+        buffer[pixelIndex++] = (pixel.g - 128) / 128;
+        buffer[pixelIndex++] = (pixel.b - 128) / 128;
       }
     }
     return convertedBytes.buffer.asFloat32List();

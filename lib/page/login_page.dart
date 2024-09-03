@@ -1,8 +1,5 @@
 import 'package:face_auth_flutter/page/face_recognition/camera_page.dart';
-import 'package:face_auth_flutter/utils/local_db.dart';
 import 'package:flutter/material.dart';
-
-import '../utils/utils.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -12,9 +9,13 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  //
+
+  double match = 0.0;
+
   @override
   void initState() {
-    printIfDebug(LocalDB.getUser().name);
+    // dp("User = ", LocalDB.getUser().name);
     super.initState();
   }
 
@@ -30,27 +31,109 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Text(
+                  "Match percentage = $match",
+                  style: const TextStyle(fontSize: 20, color: Colors.amber),
+                ),
+                Text(
+                  match == 0.0
+                      ? ""
+                      : match < 0.99
+                          ? "Success"
+                          : "Fail",
+                  style: TextStyle(
+                      color: match < 0.99 ? Colors.green : Colors.red,
+                      fontSize: 20),
+                ),
                 buildButton(
-                  text: 'Register',
+                  text: 'Scan Document',
                   icon: Icons.app_registration_rounded,
                   onClicked: () async {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const FaceScanScreen()));
+                    showAboutDialog(context: context, children: [
+                      InkWell(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const FaceScanScreen(
+                                        cameraType: CameraType.front,
+                                        scanType: ScanType.register,
+                                      ))).then(
+                            (value) {
+                              match = value;
+                              setState(() {});
+                            },
+                          );
+                        },
+                        child: const Text("Front Camera"),
+                      ),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const FaceScanScreen(
+                                        cameraType: CameraType.back,
+                                        scanType: ScanType.register,
+                                      ))).then(
+                            (value) {
+                              match = value;
+                              setState(() {});
+                            },
+                          );
+                        },
+                        child: const Text("Back Camera"),
+                      ),
+                    ]);
                   },
                 ),
                 const SizedBox(height: 24),
                 buildButton(
-                  text: 'Login',
+                  text: 'Compare',
                   icon: Icons.login,
                   onClicked: () async {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => FaceScanScreen(
-                                  user: LocalDB.getUser(),
-                                )));
+                    showAboutDialog(context: context, children: [
+                      InkWell(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const FaceScanScreen(
+                                        cameraType: CameraType.front,
+                                        scanType: ScanType.authenticate,
+                                      ))).then(
+                            (value) {
+                              match = value;
+                              setState(() {});
+                            },
+                          );
+                        },
+                        child: const Text("Front Camera"),
+                      ),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const FaceScanScreen(
+                                        cameraType: CameraType.back,
+                                        scanType: ScanType.authenticate,
+                                      ))).then(
+                            (value) {
+                              match = value;
+                              setState(() {});
+                            },
+                          );
+                        },
+                        child: const Text("Back Camera"),
+                      ),
+                    ]);
                   },
                 ),
               ],
