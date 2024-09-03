@@ -17,7 +17,7 @@ class CWidgets {
           height: 45,
           decoration: const BoxDecoration(
               borderRadius: BorderRadius.all(Radius.circular(10)),
-              color: Colors.blue),
+              color: Color(0xff87B049)),
           child: Center(
             child: Text(
               text,

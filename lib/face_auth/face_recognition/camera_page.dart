@@ -1,12 +1,7 @@
 import 'dart:typed_data';
-
 import 'package:camera/camera.dart';
-import 'package:face_auth_flutter/face_auth/face_recognition/image_converter.dart';
 import 'package:flutter/material.dart';
-
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:image/image.dart' as img;
-import 'package:lottie/lottie.dart';
 import '../../utils/utils.dart';
 import '../../widgets/common_widgets.dart';
 import 'ml_service.dart';
@@ -229,82 +224,101 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.white,
         body: Stack(
           children: [
             SizedBox(
                 width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height,
+                height: MediaQuery.of(context).size.height - 50,
                 child: isControllerInitialized
                     ? CameraPreview(_cameraController)
-                    : null),
+                    : const CircularProgressIndicator()),
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      child: widget.scanType == ScanType.register
-                          ? Image.asset("assets/svgviewer-outputh.png")
-                          : Lottie.asset("assets/loading.json",
-                              width: MediaQuery.of(context).size.width * 0.7),
-                    ),
+                    child: widget.scanType == ScanType.register
+                        ? Image.asset("assets/svgviewer-outputh.png")
+                        : Image.asset("assets/svgviewer-png-output (1).png",
+                            fit: BoxFit.cover),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                        child: CWidgets.customExtendedButton(
-                            text: "Capture",
-                            context: context,
-                            isClickable: true,
-                            onTap: () {
-                              //
+                  Container(
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        const Text(
+                          "When you’re done, press next",
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w400,
+                              fontFamily: "Roboto"),
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: CWidgets.customExtendedButton(
+                                  text: "Capture",
+                                  context: context,
+                                  isClickable: true,
+                                  onTap: () {
+                                    //
 
-                              bool canProcess = false;
+                                    bool canProcess = false;
 
-                              setState(() {});
+                                    setState(() {});
 
-                              _cameraController
-                                  .startImageStream((CameraImage image) async {
-                                //
+                                    _cameraController.startImageStream(
+                                        (CameraImage image) async {
+                                      //
 
-                                if (canProcess) return;
+                                      if (canProcess) return;
 
-                                canProcess = true;
+                                      canProcess = true;
 
-                                setState(() {});
+                                      setState(() {});
 
-                                _predictFacesFromImage(image: image)
-                                    .then((value) {
-                                  //
+                                      _predictFacesFromImage(image: image)
+                                          .then((value) {
+                                        //
 
-                                  canProcess = false;
-                                  setState(() {});
-                                });
+                                        canProcess = false;
+                                        setState(() {});
+                                      });
 
-                                return;
-                              });
-                            }),
-                      ),
-                      IconButton(
-                          icon: Icon(
-                            flash ? Icons.flash_on : Icons.flash_off,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              flash = !flash;
-                            });
-                            flash
-                                ? _cameraController
-                                    .setFlashMode(FlashMode.torch)
-                                : _cameraController.setFlashMode(FlashMode.off);
-                          }),
-                    ],
+                                      return;
+                                    });
+                                  }),
+                            ),
+                            IconButton(
+                                icon: Icon(
+                                  flash ? Icons.flash_on : Icons.flash_off,
+                                  color: Colors.black,
+                                  size: 28,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    flash = !flash;
+                                  });
+                                  flash
+                                      ? _cameraController
+                                          .setFlashMode(FlashMode.torch)
+                                      : _cameraController
+                                          .setFlashMode(FlashMode.off);
+                                }),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(
                     height: 30,
